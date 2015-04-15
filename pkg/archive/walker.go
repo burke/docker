@@ -16,9 +16,9 @@ import (
 type WalkFunc func(path string, oldInfo, newInfo os.FileInfo, err error) error
 
 type walker struct {
-	root1 string
-	root2 string
-	fn    WalkFunc
+	dir1 string
+	dir2 string
+	fn   WalkFunc
 }
 
 // collectFileInfoForChanges returns a complete representation of the trees
@@ -88,18 +88,18 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 	return root1, root2, nil
 }
 
-func filepathWalk(root1, root2 string, walkFn WalkFunc) error {
+func filepathWalk(dir1, dir2 string, walkFn WalkFunc) error {
 	walker := &walker{
-		root1: root1,
-		root2: root2,
-		fn:    walkFn,
+		dir1: dir1,
+		dir2: dir2,
+		fn:   walkFn,
 	}
 
-	i1, err := os.Lstat(root1)
+	i1, err := os.Lstat(dir1)
 	if err != nil {
 		return walkFn("/", nil, nil, err)
 	}
-	i2, err := os.Lstat(root2)
+	i2, err := os.Lstat(dir2)
 	if err != nil {
 		return walkFn("/", nil, nil, err)
 	}
@@ -129,14 +129,14 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 
 	var names1, names2 []nameIno
 	if is1Dir {
-		names1, err = readDirNames(filepath.Join(w.root1, path))
+		names1, err = readDirNames(filepath.Join(w.dir1, path))
 		if err != nil {
 			return w.fn(path, i1, i2, err)
 		}
 	}
 
 	if is2Dir {
-		names2, err = readDirNames(filepath.Join(w.root2, path))
+		names2, err = readDirNames(filepath.Join(w.dir2, path))
 		if err != nil {
 			return w.fn(path, i1, i2, err)
 		}
@@ -185,8 +185,8 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 
 	for _, name := range names {
 		fname := filepath.Join(path, name)
-		fp1 := filepath.Join(w.root1, fname)
-		fp2 := filepath.Join(w.root2, fname)
+		fp1 := filepath.Join(w.dir1, fname)
+		fp2 := filepath.Join(w.dir2, fname)
 		oldInfo, err1 := os.Lstat(fp1)
 		newInfo, err2 := os.Lstat(fp2)
 		if err1 != nil && !os.IsNotExist(err1) {
