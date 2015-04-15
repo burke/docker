@@ -205,7 +205,6 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 		}
 	}
 
-	t := time.Now()
 	for name, newChild := range info.children {
 		oldChild, _ := oldChildren[name]
 		if oldChild != nil {
@@ -240,7 +239,6 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 
 		newChild.addChanges(oldChild, changes)
 	}
-	fmt.Println(time.Since(t))
 	for _, oldChild := range oldChildren {
 		// delete
 		change := Change{
@@ -268,7 +266,9 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 func (info *FileInfo) Changes(oldInfo *FileInfo) []Change {
 	var changes []Change
 
+	t := time.Now()
 	info.addChanges(oldInfo, &changes)
+	fmt.Println(time.Since(t))
 
 	return changes
 }
