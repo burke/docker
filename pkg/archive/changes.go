@@ -266,9 +266,7 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 func (info *FileInfo) Changes(oldInfo *FileInfo) []Change {
 	var changes []Change
 
-	t := time.Now()
 	info.addChanges(oldInfo, &changes)
-	fmt.Println(time.Since(t))
 
 	return changes
 }

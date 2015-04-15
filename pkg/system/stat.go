@@ -42,17 +42,3 @@ func (s Stat_t) Mtim() syscall.Timespec {
 func (s Stat_t) GetLastModification() syscall.Timespec {
 	return s.Mtim()
 }
-
-func sameFsTimeSpec(a, b syscall.Timespec) bool {
-	return a.Sec == b.Sec &&
-		(a.Nsec == b.Nsec || a.Nsec == 0 || b.Nsec == 0)
-}
-
-func (s Stat_t) Equals(o Stat_t) bool {
-	return s.mode == o.mode &&
-		s.uid == o.uid &&
-		s.gid == o.gid &&
-		s.rdev == o.rdev &&
-		s.size == o.size
-
-}
