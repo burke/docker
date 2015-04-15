@@ -226,10 +226,7 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 			// be visible when actually comparing the stat fields. The only time this
 			// breaks down is if some code intentionally hides a change by setting
 			// back mtime
-			if oldStat.Mode() != newStat.Mode() ||
-				oldStat.Uid() != newStat.Uid() ||
-				oldStat.Gid() != newStat.Gid() ||
-				oldStat.Rdev() != newStat.Rdev() ||
+			if !oldStat.Equals(*newStat) ||
 				// Don't look at size for dirs, its not a good measure of change
 				(oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR &&
 					(!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) || (oldStat.Size() != newStat.Size()))) ||
