@@ -54,8 +54,13 @@ func (w *walker) filepathWalk() error {
 }
 
 func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
-	if err := w.myfun(path, i1, i2); err != nil {
-		return err
+	if path != "/" {
+		if err := w.walkchunk(path, i1, w.dir1, w.root1); err != nil {
+			return err
+		}
+		if err := w.walkchunk(path, i2, w.dir2, w.root2); err != nil {
+			return err
+		}
 	}
 
 	// If these files (and therefore the subtrees rooted here) are the same
@@ -147,48 +152,28 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 	return nil
 }
 
-func (w *walker) myfun(path string, f1, f2 os.FileInfo) error {
-
-	if f1 != nil {
-		parent1 := w.root1.LookUp(filepath.Dir(path))
-		if parent1 == nil {
-			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-		}
-		info1 := &FileInfo{
-			name:     filepath.Base(path),
-			children: make(map[string]*FileInfo),
-			parent:   parent1,
-		}
-		path1 := filepath.Join(w.dir1, path)
-		stat1, err := system.Lstat(path1) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		if err != nil {
-			return err
-		}
-		info1.stat = stat1
-		info1.capability, _ = system.Lgetxattr(path1, "security.capability")
-		parent1.children[info1.name] = info1
+func (w *walker) walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
+	if fi == nil {
+		return nil
 	}
 
-	if f2 != nil {
-		parent2 := w.root2.LookUp(filepath.Dir(path))
-		if parent2 == nil {
-			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-		}
-		info2 := &FileInfo{
-			name:     filepath.Base(path),
-			children: make(map[string]*FileInfo),
-			parent:   parent2,
-		}
-		path2 := filepath.Join(w.dir2, path)
-		stat2, err := system.Lstat(path2) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		if err != nil {
-			return err
-		}
-		info2.stat = stat2
-		info2.capability, _ = system.Lgetxattr(path2, "security.capability")
-		parent2.children[info2.name] = info2
+	parent := root.LookUp(filepath.Dir(path))
+	if parent == nil {
+		return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
 	}
-
+	info := &FileInfo{
+		name:     filepath.Base(path),
+		children: make(map[string]*FileInfo),
+		parent:   parent,
+	}
+	cpath := filepath.Join(dir, path)
+	stat, err := system.Lstat(cpath) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if err != nil {
+		return err
+	}
+	info.stat = stat
+	info.capability, _ = system.Lgetxattr(cpath, "security.capability")
+	parent.children[info.name] = info
 	return nil
 }
 
