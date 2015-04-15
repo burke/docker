@@ -18,3 +18,7 @@ func Lstat(path string) (*Stat_t, error) {
 	}
 	return fromStatT(s)
 }
+
+func FromStatT(s *syscall.Stat_t) (*Stat_t, error) {
+	return fromStatT(s)
+}

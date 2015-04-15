@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"sort"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"github.com/docker/docker/pkg/system"
@@ -43,11 +42,9 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		return nil, nil, err
 	}
 
-	t := time.Now()
 	if err := w.walk("/", i1, i2); err != nil {
 		return nil, nil, err
 	}
-	fmt.Println(time.Since(t))
 
 	return w.root1, w.root2, nil
 }
@@ -66,7 +63,7 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 		parent:   parent,
 	}
 	cpath := filepath.Join(dir, path)
-	stat, err := system.Lstat(cpath) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	stat, err := system.FromStatT(fi.Sys().(*syscall.Stat_t)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	if err != nil {
 		return err
 	}
