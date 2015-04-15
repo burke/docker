@@ -202,36 +202,29 @@ func (s nameInoSlice) Less(i, j int) bool { return s[i].name < s[j].name }
 func readdirnames(f *os.File) (names []nameIno, err error) {
 	var (
 		size = 100
-		n    = -1
 		buf  = make([]byte, 4096)
 		nbuf int
 		bufp int
 	)
 
 	names = make([]nameIno, 0, size) // Empty with room to grow.
-	for n != 0 {
-		// Refill the buffer if necessary
-		if bufp >= nbuf {
-			bufp = 0
-			var errno error
-			nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), buf)) // getdents on linux
-			if errno != nil {
-				return names, os.NewSyscallError("readdirent", errno)
-			}
-			if nbuf <= 0 {
-				break // EOF
-			}
+	// Refill the buffer if necessary
+	if bufp >= nbuf {
+		bufp = 0
+		var errno error
+		nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), buf)) // getdents on linux
+		if errno != nil {
+			return names, os.NewSyscallError("readdirent", errno)
 		}
+		if nbuf <= 0 {
+			break // EOF
+		}
+	}
 
-		// Drain the buffer
-		var nb, nc int
-		nb, nc, names = ParseDirent(buf[bufp:nbuf], n, names)
-		bufp += nb
-		n -= nc
-	}
-	if n >= 0 && len(names) == 0 {
-		return names, io.EOF
-	}
+	// Drain the buffer
+	var nb, nc int
+	nb, nc, names = ParseDirent(buf[bufp:nbuf], -1, names)
+	bufp += nb
 	return names, nil
 }
 
