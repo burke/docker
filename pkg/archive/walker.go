@@ -3,7 +3,6 @@ package archive
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -202,7 +201,6 @@ func (s nameInoSlice) Less(i, j int) bool { return s[i].name < s[j].name }
 func readdirnames(f *os.File) (names []nameIno, err error) {
 	var (
 		size = 100
-		n    = -1
 		buf  = make([]byte, 4096)
 		nbuf int
 		bufp int
@@ -227,9 +225,6 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 		var nb int
 		nb, _, names = ParseDirent(buf[bufp:nbuf], -1, names)
 		bufp += nb
-	}
-	if n >= 0 && len(names) == 0 {
-		return names, io.EOF
 	}
 	return names, nil
 }
