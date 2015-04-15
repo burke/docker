@@ -31,7 +31,7 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 	root1 := newRootFileInfo()
 	root2 := newRootFileInfo()
 
-	err := filepathWalk(dir1, dir2, func(path string, f1, f2 os.FileInfo, err error) error {
+	myfun := func(path string, f1, f2 os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -81,30 +81,34 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		}
 
 		return nil
-	})
+	}
+
+	walker := &walker{
+		dir1: dir1,
+		dir2: dir2,
+		fn:   myfun,
+	}
+
+	err := walker.filepathWalk()
+
 	if err != nil {
 		return nil, nil, err
 	}
 	return root1, root2, nil
 }
 
-func filepathWalk(dir1, dir2 string, walkFn WalkFunc) error {
-	walker := &walker{
-		dir1: dir1,
-		dir2: dir2,
-		fn:   walkFn,
+func (w *walker) filepathWalk() error {
+
+	i1, err := os.Lstat(w.dir1)
+	if err != nil {
+		return w.fn("/", nil, nil, err)
+	}
+	i2, err := os.Lstat(w.dir2)
+	if err != nil {
+		return w.fn("/", nil, nil, err)
 	}
 
-	i1, err := os.Lstat(dir1)
-	if err != nil {
-		return walkFn("/", nil, nil, err)
-	}
-	i2, err := os.Lstat(dir2)
-	if err != nil {
-		return walkFn("/", nil, nil, err)
-	}
-
-	return walker.walk("/", i1, i2)
+	return w.walk("/", i1, i2)
 }
 
 func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
