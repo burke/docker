@@ -73,12 +73,6 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 	return nil
 }
 
-type workItem struct {
-	path string
-	i1   os.FileInfo
-	i2   os.FileInfo
-}
-
 func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 	if path != "/" {
 		if err := walkchunk(path, i1, w.dir1, w.root1); err != nil {
@@ -155,14 +149,12 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 
 	for _, name := range names {
 		fname := filepath.Join(path, name)
-		fp1 := filepath.Join(w.dir1, fname)
-		fp2 := filepath.Join(w.dir2, fname)
-		cInfo1, err1 := os.Lstat(fp1) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		cInfo2, err2 := os.Lstat(fp2) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		if err1 != nil && !os.IsNotExist(err1) {
+		cInfo1, err := os.Lstat(filepath.Join(w.dir1, fname)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		if err2 != nil && !os.IsNotExist(err2) {
+		cInfo2, err := os.Lstat(filepath.Join(w.dir2, fname)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		if err = w.walk(fname, cInfo1, cInfo2); err != nil {
@@ -223,13 +215,6 @@ func readdirnames(dirname string) (names []nameIno, err error) {
 	sl := nameInoSlice(names)
 	sort.Sort(sl)
 	return sl, nil
-}
-
-func fixCount(n int, err error) (int, error) {
-	if n < 0 {
-		n = 0
-	}
-	return n, err
 }
 
 func ParseDirent(buf []byte, names []nameIno) (consumed int, newnames []nameIno) {
