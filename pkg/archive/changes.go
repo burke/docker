@@ -214,6 +214,7 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 		}
 	}
 
+	t := time.Now()
 	for name, newChild := range info.children {
 		oldChild, _ := oldChildren[name]
 		if oldChild != nil {
@@ -226,7 +227,10 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 			// be visible when actually comparing the stat fields. The only time this
 			// breaks down is if some code intentionally hides a change by setting
 			// back mtime
-			if !oldStat.Equals(*newStat) ||
+			if oldStat.Mode() != newStat.Mode() ||
+				oldStat.Uid() != newStat.Uid() ||
+				oldStat.Gid() != newStat.Gid() ||
+				oldStat.Rdev() != newStat.Rdev() ||
 				// Don't look at size for dirs, its not a good measure of change
 				(oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR &&
 					(!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) || (oldStat.Size() != newStat.Size()))) ||
@@ -245,6 +249,7 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 
 		newChild.addChanges(oldChild, changes)
 	}
+	fmt.Println(time.Since(t))
 	for _, oldChild := range oldChildren {
 		// delete
 		change := Change{
