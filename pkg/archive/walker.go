@@ -34,23 +34,19 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		root2: newRootFileInfo(),
 	}
 
-	if err := w.filepathWalk(); err != nil {
-		return nil, nil, err
-	}
-	return w.root1, w.root2, nil
-}
-
-func (w *walker) filepathWalk() error {
 	i1, err := os.Lstat(w.dir1)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	i2, err := os.Lstat(w.dir2)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	return w.walk("/", i1, i2)
+	if err := w.walk("/", i1, i2); err != nil {
+		return nil, nil, err
+	}
+	return w.root1, w.root2, nil
 }
 
 func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
