@@ -46,9 +46,18 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 	}
 
 	w.q <- workItem{"/", i1, i2}
-	if err := w.walkQueue(); err != nil {
-		return nil, nil, err
+
+	ch := make(chan error, 4)
+	for i := 0; i < 4; i++ {
+		go func() { ch <- w.walkQueue() }()
 	}
+
+	for i := 0; i < 4; i++ {
+		if err := <-ch; err != nil {
+			return nil, nil, err
+		}
+	}
+
 	return w.root1, w.root2, nil
 }
 
