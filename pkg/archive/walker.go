@@ -49,12 +49,36 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 	return w.root1, w.root2, nil
 }
 
+func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
+	if fi == nil {
+		return nil
+	}
+	parent := root.LookUp(filepath.Dir(path))
+	if parent == nil {
+		return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
+	}
+	info := &FileInfo{
+		name:     filepath.Base(path),
+		children: make(map[string]*FileInfo),
+		parent:   parent,
+	}
+	cpath := filepath.Join(dir, path)
+	stat, err := system.Lstat(cpath) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if err != nil {
+		return err
+	}
+	info.stat = stat
+	info.capability, _ = system.Lgetxattr(cpath, "security.capability")
+	parent.children[info.name] = info
+	return nil
+}
+
 func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 	if path != "/" {
-		if err := w.walkchunk(path, i1, w.dir1, w.root1); err != nil {
+		if err := walkchunk(path, i1, w.dir1, w.root1); err != nil {
 			return err
 		}
-		if err := w.walkchunk(path, i2, w.dir2, w.root2); err != nil {
+		if err := walkchunk(path, i2, w.dir2, w.root2); err != nil {
 			return err
 		}
 	}
@@ -139,31 +163,6 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 			return err
 		}
 	}
-	return nil
-}
-
-func (w *walker) walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
-	if fi == nil {
-		return nil
-	}
-
-	parent := root.LookUp(filepath.Dir(path))
-	if parent == nil {
-		return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-	}
-	info := &FileInfo{
-		name:     filepath.Base(path),
-		children: make(map[string]*FileInfo),
-		parent:   parent,
-	}
-	cpath := filepath.Join(dir, path)
-	stat, err := system.Lstat(cpath) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	if err != nil {
-		return err
-	}
-	info.stat = stat
-	info.capability, _ = system.Lgetxattr(cpath, "security.capability")
-	parent.children[info.name] = info
 	return nil
 }
 
