@@ -59,12 +59,6 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 		}
 	}
 
-	// If these files (and therefore the subtrees rooted here) are the same
-	// inode, we need not walk them.
-	if i1 != nil && i2 != nil && os.SameFile(i1, i2) {
-		return nil
-	}
-
 	is1Dir := i1 != nil && i1.IsDir()
 	is2Dir := i2 != nil && i2.IsDir()
 
