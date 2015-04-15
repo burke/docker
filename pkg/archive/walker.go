@@ -42,12 +42,38 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		return nil, nil, err
 	}
 
+	statq = make(chan sqi, 1024)
+	ch := make(chan error)
+	go func() {
+		for sqin := range statq {
+			stat, err := system.Lstat(sqin.path) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			if err != nil {
+				ch <- err
+				return
+			}
+			sqin.item.stat = stat
+			sqin.item.capability, _ = system.Lgetxattr(sqin.path, "security.capability") //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		}
+		ch <- nil
+	}()
+
 	if err := w.walk("/", i1, i2); err != nil {
+		return nil, nil, err
+	}
+	close(statq)
+	if err := <-ch; err != nil {
 		return nil, nil, err
 	}
 
 	return w.root1, w.root2, nil
 }
+
+type sqi struct {
+	path string
+	item *FileInfo
+}
+
+var statq chan sqi
 
 func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 	if fi == nil {
@@ -63,12 +89,7 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 		parent:   parent,
 	}
 	cpath := filepath.Join(dir, path)
-	stat, err := system.Lstat(cpath) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	if err != nil {
-		return err
-	}
-	info.stat = stat
-	info.capability, _ = system.Lgetxattr(cpath, "security.capability") //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	statq <- sqi{cpath, info}
 	parent.children[info.name] = info
 	return nil
 }
