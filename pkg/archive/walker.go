@@ -53,9 +53,8 @@ func (w *walker) filepathWalk() error {
 	return w.walk("/", i1, i2)
 }
 
-func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
-	err := w.myfun(path, i1, i2, nil)
-	if err != nil {
+func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
+	if err := w.myfun(path, i1, i2); err != nil {
 		return err
 	}
 
@@ -148,14 +147,7 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 	return nil
 }
 
-func (w *walker) myfun(path string, f1, f2 os.FileInfo, err error) error {
-	if err != nil {
-		return err
-	}
-
-	if path == "/" {
-		return nil
-	}
+func (w *walker) myfun(path string, f1, f2 os.FileInfo) error {
 
 	if f1 != nil {
 		parent1 := w.root1.LookUp(filepath.Dir(path))
