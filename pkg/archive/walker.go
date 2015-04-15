@@ -68,7 +68,7 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 		return err
 	}
 	info.stat = stat
-	info.capability, _ = system.Lgetxattr(cpath, "security.capability")
+	info.capability, _ = system.Lgetxattr(cpath, "security.capability") //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	parent.children[info.name] = info
 	return nil
 }
@@ -151,15 +151,15 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 		fname := filepath.Join(path, name)
 		fp1 := filepath.Join(w.dir1, fname)
 		fp2 := filepath.Join(w.dir2, fname)
-		oldInfo, err1 := os.Lstat(fp1) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		newInfo, err2 := os.Lstat(fp2) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		cInfo1, err1 := os.Lstat(fp1) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		cInfo2, err2 := os.Lstat(fp2) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		if err1 != nil && !os.IsNotExist(err1) {
 			return err
 		}
 		if err2 != nil && !os.IsNotExist(err2) {
 			return err
 		}
-		if err = w.walk(fname, oldInfo, newInfo); err != nil {
+		if err = w.walk(fname, cInfo1, cInfo2); err != nil {
 			return err
 		}
 	}
