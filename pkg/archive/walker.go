@@ -223,7 +223,7 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 
 		// Drain the buffer
 		var nb int
-		nb, _, names = ParseDirent(buf[bufp:nbuf], -1, names)
+		nb, names = ParseDirent(buf[bufp:nbuf], names)
 		bufp += nb
 	}
 	return names, nil
@@ -236,10 +236,9 @@ func fixCount(n int, err error) (int, error) {
 	return n, err
 }
 
-func ParseDirent(buf []byte, max int, names []nameIno) (consumed int, count int, newnames []nameIno) {
+func ParseDirent(buf []byte, names []nameIno) (consumed int, newnames []nameIno) {
 	origlen := len(buf)
-	count = 0
-	for max != 0 && len(buf) > 0 {
+	for len(buf) > 0 {
 		dirent := (*syscall.Dirent)(unsafe.Pointer(&buf[0]))
 		buf = buf[dirent.Reclen:]
 		if dirent.Ino == 0 { // File absent in directory.
@@ -250,11 +249,9 @@ func ParseDirent(buf []byte, max int, names []nameIno) (consumed int, count int,
 		if name == "." || name == ".." { // Useless names
 			continue
 		}
-		max--
-		count++
 		names = append(names, nameIno{name, dirent.Ino})
 	}
-	return origlen - len(buf), count, names
+	return origlen - len(buf), names
 }
 
 func clen(n []byte) int {
