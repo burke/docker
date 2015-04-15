@@ -99,14 +99,14 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 
 	var names1, names2 []nameIno
 	if is1Dir {
-		names1, err = readDirNames(filepath.Join(w.dir1, path)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		names1, err = readdirnames(filepath.Join(w.dir1, path)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		if err != nil {
 			return err
 		}
 	}
 
 	if is2Dir {
-		names2, err = readDirNames(filepath.Join(w.dir2, path)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		names2, err = readdirnames(filepath.Join(w.dir2, path)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		if err != nil {
 			return err
 		}
@@ -172,21 +172,6 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 	return nil
 }
 
-func readDirNames(dirname string) ([]nameIno, error) {
-	f, err := os.Open(dirname)
-	if err != nil {
-		return nil, err
-	}
-	names, err := readdirnames(f)
-	f.Close()
-	if err != nil {
-		return nil, err
-	}
-	sl := nameInoSlice(names)
-	sort.Sort(sl)
-	return sl, nil
-}
-
 type nameIno struct {
 	name string
 	ino  uint64
@@ -198,7 +183,7 @@ func (s nameInoSlice) Len() int           { return len(s) }
 func (s nameInoSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s nameInoSlice) Less(i, j int) bool { return s[i].name < s[j].name }
 
-func readdirnames(f *os.File) (names []nameIno, err error) {
+func readdirnames(dirname string) (names []nameIno, err error) {
 	var (
 		size = 100
 		buf  = make([]byte, 4096)
@@ -207,15 +192,23 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 		nb   int
 	)
 
+	f, err := os.Open(dirname)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
 	names = make([]nameIno, 0, size) // Empty with room to grow.
 	for {
 		// Refill the buffer if necessary
 		if bufp >= nbuf {
 			bufp = 0
-			var errno error
-			nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), buf)) // getdents on linux
-			if errno != nil {
-				return names, os.NewSyscallError("readdirent", errno)
+			nbuf, err = syscall.ReadDirent(int(f.Fd()), buf) // getdents on linux
+			if nbuf < 0 {
+				nbuf = 0
+			}
+			if err != nil {
+				return nil, os.NewSyscallError("readdirent", err)
 			}
 			if nbuf <= 0 {
 				break // EOF
@@ -226,7 +219,10 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 		nb, names = ParseDirent(buf[bufp:nbuf], names)
 		bufp += nb
 	}
-	return names, nil
+
+	sl := nameInoSlice(names)
+	sort.Sort(sl)
+	return sl, nil
 }
 
 func fixCount(n int, err error) (int, error) {
