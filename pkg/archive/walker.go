@@ -16,9 +16,11 @@ import (
 type WalkFunc func(path string, oldInfo, newInfo os.FileInfo, err error) error
 
 type walker struct {
-	dir1 string
-	dir2 string
-	fn   WalkFunc
+	dir1  string
+	dir2  string
+	root1 *FileInfo
+	root2 *FileInfo
+	fn    WalkFunc
 }
 
 // collectFileInfoForChanges returns a complete representation of the trees
@@ -28,73 +30,19 @@ type walker struct {
 // to generating a list of changes between the two directories, as it does not
 // reflect the full contents.
 func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) {
-	root1 := newRootFileInfo()
-	root2 := newRootFileInfo()
 
-	myfun := func(path string, f1, f2 os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if path == "/" {
-			return nil
-		}
-
-		if f1 != nil {
-			parent1 := root1.LookUp(filepath.Dir(path))
-			if parent1 == nil {
-				return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-			}
-			info1 := &FileInfo{
-				name:     filepath.Base(path),
-				children: make(map[string]*FileInfo),
-				parent:   parent1,
-			}
-			path1 := filepath.Join(dir1, path)
-			stat1, err := system.Lstat(path1)
-			if err != nil {
-				return err
-			}
-			info1.stat = stat1
-			info1.capability, _ = system.Lgetxattr(path1, "security.capability")
-			parent1.children[info1.name] = info1
-		}
-
-		if f2 != nil {
-			parent2 := root2.LookUp(filepath.Dir(path))
-			if parent2 == nil {
-				return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-			}
-			info2 := &FileInfo{
-				name:     filepath.Base(path),
-				children: make(map[string]*FileInfo),
-				parent:   parent2,
-			}
-			path2 := filepath.Join(dir2, path)
-			stat2, err := system.Lstat(path2)
-			if err != nil {
-				return err
-			}
-			info2.stat = stat2
-			info2.capability, _ = system.Lgetxattr(path2, "security.capability")
-			parent2.children[info2.name] = info2
-		}
-
-		return nil
+	w := &walker{
+		dir1:  dir1,
+		dir2:  dir2,
+		root1: newRootFileInfo(),
+		root2: newRootFileInfo(),
 	}
+	w.fn = w.myfun
 
-	walker := &walker{
-		dir1: dir1,
-		dir2: dir2,
-		fn:   myfun,
-	}
-
-	err := walker.filepathWalk()
-
-	if err != nil {
+	if err := w.filepathWalk(); err != nil {
 		return nil, nil, err
 	}
-	return root1, root2, nil
+	return w.root1, w.root2, nil
 }
 
 func (w *walker) filepathWalk() error {
@@ -111,6 +59,57 @@ func (w *walker) filepathWalk() error {
 	return w.walk("/", i1, i2)
 }
 
+func (w *walker) myfun(path string, f1, f2 os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+
+	if path == "/" {
+		return nil
+	}
+
+	if f1 != nil {
+		parent1 := w.root1.LookUp(filepath.Dir(path))
+		if parent1 == nil {
+			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
+		}
+		info1 := &FileInfo{
+			name:     filepath.Base(path),
+			children: make(map[string]*FileInfo),
+			parent:   parent1,
+		}
+		path1 := filepath.Join(w.dir1, path)
+		stat1, err := system.Lstat(path1)
+		if err != nil {
+			return err
+		}
+		info1.stat = stat1
+		info1.capability, _ = system.Lgetxattr(path1, "security.capability")
+		parent1.children[info1.name] = info1
+	}
+
+	if f2 != nil {
+		parent2 := w.root2.LookUp(filepath.Dir(path))
+		if parent2 == nil {
+			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
+		}
+		info2 := &FileInfo{
+			name:     filepath.Base(path),
+			children: make(map[string]*FileInfo),
+			parent:   parent2,
+		}
+		path2 := filepath.Join(w.dir2, path)
+		stat2, err := system.Lstat(path2)
+		if err != nil {
+			return err
+		}
+		info2.stat = stat2
+		info2.capability, _ = system.Lgetxattr(path2, "security.capability")
+		parent2.children[info2.name] = info2
+	}
+
+	return nil
+}
 func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 	err := w.fn(path, i1, i2, nil)
 	if err != nil {
