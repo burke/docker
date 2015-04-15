@@ -204,6 +204,7 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 		buf  = make([]byte, 4096)
 		nbuf int
 		bufp int
+		nb   int
 	)
 
 	names = make([]nameIno, 0, size) // Empty with room to grow.
@@ -222,7 +223,6 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 		}
 
 		// Drain the buffer
-		var nb int
 		nb, names = ParseDirent(buf[bufp:nbuf], names)
 		bufp += nb
 	}
