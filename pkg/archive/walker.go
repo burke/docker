@@ -207,22 +207,24 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 	)
 
 	names = make([]nameIno, 0, size) // Empty with room to grow.
-	// Refill the buffer if necessary
-	if bufp >= nbuf {
-		bufp = 0
-		var errno error
-		nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), buf)) // getdents on linux
-		if errno != nil {
-			return names, os.NewSyscallError("readdirent", errno)
-		}
-		if nbuf <= 0 {
-			break // EOF
+	for {
+		// Refill the buffer if necessary
+		if bufp >= nbuf {
+			bufp = 0
+			var errno error
+			nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), buf)) // getdents on linux
+			if errno != nil {
+				return names, os.NewSyscallError("readdirent", errno)
+			}
+			if nbuf <= 0 {
+				break // EOF
+			}
 		}
 	}
 
 	// Drain the buffer
-	var nb, nc int
-	nb, nc, names = ParseDirent(buf[bufp:nbuf], -1, names)
+	var nb int
+	nb, _, names = ParseDirent(buf[bufp:nbuf], -1, names)
 	bufp += nb
 	return names, nil
 }
