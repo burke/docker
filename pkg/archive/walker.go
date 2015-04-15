@@ -188,16 +188,6 @@ func readDirNames(dirname string) ([]nameIno, error) {
 	return sl, nil
 }
 
-const (
-	blockSize = 4096
-)
-
-type dirInfo struct {
-	buf  []byte // buffer for directory I/O
-	nbuf int    // length of buf; return value from Getdirentries
-	bufp int    // location of next record in buf.
-}
-
 type nameIno struct {
 	name string
 	ino  uint64
@@ -210,31 +200,33 @@ func (s nameInoSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s nameInoSlice) Less(i, j int) bool { return s[i].name < s[j].name }
 
 func readdirnames(f *os.File) (names []nameIno, err error) {
-	size := 100
-	n := -1
-
-	d := new(dirInfo)
-	d.buf = make([]byte, 4096)
+	var (
+		size = 100
+		n    = -1
+		buf  = make([]byte, 4096)
+		nbuf int
+		bufp int
+	)
 
 	names = make([]nameIno, 0, size) // Empty with room to grow.
 	for n != 0 {
 		// Refill the buffer if necessary
-		if d.bufp >= d.nbuf {
-			d.bufp = 0
+		if bufp >= nbuf {
+			bufp = 0
 			var errno error
-			d.nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), d.buf)) // getdents on linux
+			nbuf, errno = fixCount(syscall.ReadDirent(int(f.Fd()), buf)) // getdents on linux
 			if errno != nil {
 				return names, os.NewSyscallError("readdirent", errno)
 			}
-			if d.nbuf <= 0 {
+			if nbuf <= 0 {
 				break // EOF
 			}
 		}
 
 		// Drain the buffer
 		var nb, nc int
-		nb, nc, names = ParseDirent(d.buf[d.bufp:d.nbuf], n, names)
-		d.bufp += nb
+		nb, nc, names = ParseDirent(buf[bufp:nbuf], n, names)
+		bufp += nb
 		n -= nc
 	}
 	if n >= 0 && len(names) == 0 {
