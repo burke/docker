@@ -13,8 +13,6 @@ import (
 	"github.com/docker/docker/pkg/system"
 )
 
-type WalkFunc func(path string, oldInfo, newInfo os.FileInfo, err error) error
-
 type walker struct {
 	dir1  string
 	dir2  string
@@ -43,70 +41,18 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 }
 
 func (w *walker) filepathWalk() error {
-
 	i1, err := os.Lstat(w.dir1)
 	if err != nil {
-		return w.myfun("/", nil, nil, err)
+		return err
 	}
 	i2, err := os.Lstat(w.dir2)
 	if err != nil {
-		return w.myfun("/", nil, nil, err)
+		return err
 	}
 
 	return w.walk("/", i1, i2)
 }
 
-func (w *walker) myfun(path string, f1, f2 os.FileInfo, err error) error {
-	if err != nil {
-		return err
-	}
-
-	if path == "/" {
-		return nil
-	}
-
-	if f1 != nil {
-		parent1 := w.root1.LookUp(filepath.Dir(path))
-		if parent1 == nil {
-			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-		}
-		info1 := &FileInfo{
-			name:     filepath.Base(path),
-			children: make(map[string]*FileInfo),
-			parent:   parent1,
-		}
-		path1 := filepath.Join(w.dir1, path)
-		stat1, err := system.Lstat(path1)
-		if err != nil {
-			return err
-		}
-		info1.stat = stat1
-		info1.capability, _ = system.Lgetxattr(path1, "security.capability")
-		parent1.children[info1.name] = info1
-	}
-
-	if f2 != nil {
-		parent2 := w.root2.LookUp(filepath.Dir(path))
-		if parent2 == nil {
-			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
-		}
-		info2 := &FileInfo{
-			name:     filepath.Base(path),
-			children: make(map[string]*FileInfo),
-			parent:   parent2,
-		}
-		path2 := filepath.Join(w.dir2, path)
-		stat2, err := system.Lstat(path2)
-		if err != nil {
-			return err
-		}
-		info2.stat = stat2
-		info2.capability, _ = system.Lgetxattr(path2, "security.capability")
-		parent2.children[info2.name] = info2
-	}
-
-	return nil
-}
 func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 	err := w.myfun(path, i1, i2, nil)
 	if err != nil {
@@ -129,16 +75,16 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 
 	var names1, names2 []nameIno
 	if is1Dir {
-		names1, err = readDirNames(filepath.Join(w.dir1, path))
+		names1, err = readDirNames(filepath.Join(w.dir1, path)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		if err != nil {
-			return w.myfun(path, i1, i2, err)
+			return err
 		}
 	}
 
 	if is2Dir {
-		names2, err = readDirNames(filepath.Join(w.dir2, path))
+		names2, err = readDirNames(filepath.Join(w.dir2, path)) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		if err != nil {
-			return w.myfun(path, i1, i2, err)
+			return err
 		}
 	}
 
@@ -187,23 +133,70 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 		fname := filepath.Join(path, name)
 		fp1 := filepath.Join(w.dir1, fname)
 		fp2 := filepath.Join(w.dir2, fname)
-		oldInfo, err1 := os.Lstat(fp1)
-		newInfo, err2 := os.Lstat(fp2)
+		oldInfo, err1 := os.Lstat(fp1) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		newInfo, err2 := os.Lstat(fp2) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		if err1 != nil && !os.IsNotExist(err1) {
-			if err := w.myfun(fname, oldInfo, newInfo, err1); err != nil {
-				return err
-			}
-		} else if err2 != nil && !os.IsNotExist(err2) {
-			if err := w.myfun(fname, oldInfo, newInfo, err2); err != nil {
-				return err
-			}
-		} else {
-			err = w.walk(fname, oldInfo, newInfo)
-			if err != nil {
-				return err
-			}
+			return err
+		}
+		if err2 != nil && !os.IsNotExist(err2) {
+			return err
+		}
+		if err = w.walk(fname, oldInfo, newInfo); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func (w *walker) myfun(path string, f1, f2 os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+
+	if path == "/" {
+		return nil
+	}
+
+	if f1 != nil {
+		parent1 := w.root1.LookUp(filepath.Dir(path))
+		if parent1 == nil {
+			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
+		}
+		info1 := &FileInfo{
+			name:     filepath.Base(path),
+			children: make(map[string]*FileInfo),
+			parent:   parent1,
+		}
+		path1 := filepath.Join(w.dir1, path)
+		stat1, err := system.Lstat(path1) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		if err != nil {
+			return err
+		}
+		info1.stat = stat1
+		info1.capability, _ = system.Lgetxattr(path1, "security.capability")
+		parent1.children[info1.name] = info1
+	}
+
+	if f2 != nil {
+		parent2 := w.root2.LookUp(filepath.Dir(path))
+		if parent2 == nil {
+			return fmt.Errorf("collectFileInfoForChanges: Unexpectedly no parent for %s", path)
+		}
+		info2 := &FileInfo{
+			name:     filepath.Base(path),
+			children: make(map[string]*FileInfo),
+			parent:   parent2,
+		}
+		path2 := filepath.Join(w.dir2, path)
+		stat2, err := system.Lstat(path2) //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		if err != nil {
+			return err
+		}
+		info2.stat = stat2
+		info2.capability, _ = system.Lgetxattr(path2, "security.capability")
+		parent2.children[info2.name] = info2
+	}
+
 	return nil
 }
 
