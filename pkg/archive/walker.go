@@ -33,7 +33,7 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		dir2:  dir2,
 		root1: newRootFileInfo(),
 		root2: newRootFileInfo(),
-		q:     make(chan workItem, 1024),
+		q:     make(chan workItem, 1024*1024),
 	}
 
 	i1, err := os.Lstat(w.dir1)
