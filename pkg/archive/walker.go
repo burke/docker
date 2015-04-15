@@ -209,7 +209,7 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 	)
 
 	names = make([]nameIno, 0, size) // Empty with room to grow.
-	for n != 0 {
+	for {
 		// Refill the buffer if necessary
 		if bufp >= nbuf {
 			bufp = 0
