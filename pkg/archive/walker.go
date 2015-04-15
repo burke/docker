@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"sort"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"github.com/docker/docker/pkg/system"
@@ -19,7 +18,6 @@ type walker struct {
 	dir2  string
 	root1 *FileInfo
 	root2 *FileInfo
-	q     chan workItem
 }
 
 // collectFileInfoForChanges returns a complete representation of the trees
@@ -34,7 +32,6 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		dir2:  dir2,
 		root1: newRootFileInfo(),
 		root2: newRootFileInfo(),
-		q:     make(chan workItem, 1024*1024),
 	}
 
 	i1, err := os.Lstat(w.dir1)
@@ -46,19 +43,8 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		return nil, nil, err
 	}
 
-	w.q <- workItem{"/", i1, i2}
-
-	conc := 4
-	ch := make(chan error, conc)
-	for i := 0; i < conc; i++ {
-		go func() { ch <- w.walkQueue() }()
-		time.Sleep(3 * time.Millisecond)
-	}
-
-	for i := 0; i < conc; i++ {
-		if err := <-ch; err != nil {
-			return nil, nil, err
-		}
+	if err := w.walk("/", i1, i2); err != nil {
+		return nil, nil, err
 	}
 
 	return w.root1, w.root2, nil
@@ -84,7 +70,6 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 	}
 	info.stat = stat
 	info.capability, _ = system.Lgetxattr(cpath, "security.capability") //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	parent.AddChild(info)
 	parent.children[info.name] = info
 	return nil
 }
@@ -95,20 +80,7 @@ type workItem struct {
 	i2   os.FileInfo
 }
 
-func (w *walker) walkQueue() (err error) {
-	for {
-		select {
-		case item := <-w.q:
-			if err := w.work(item.path, item.i1, item.i2); err != nil {
-				return err
-			}
-		default:
-			return nil
-		}
-	}
-}
-
-func (w *walker) work(path string, i1, i2 os.FileInfo) (err error) {
+func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 	if path != "/" {
 		if err := walkchunk(path, i1, w.dir1, w.root1); err != nil {
 			return err
@@ -194,7 +166,9 @@ func (w *walker) work(path string, i1, i2 os.FileInfo) (err error) {
 		if err2 != nil && !os.IsNotExist(err2) {
 			return err
 		}
-		w.q <- workItem{fname, cInfo1, cInfo2}
+		if err = w.walk(fname, cInfo1, cInfo2); err != nil {
+			return err
+		}
 	}
 	return nil
 }

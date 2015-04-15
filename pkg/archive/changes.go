@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -149,13 +148,6 @@ type FileInfo struct {
 	children   map[string]*FileInfo
 	capability []byte
 	added      bool
-	mu         sync.Mutex
-}
-
-func (f *FileInfo) AddChild(c *FileInfo) {
-	f.mu.Lock()
-	f.children[c.name] = c
-	f.mu.Unlock()
 }
 
 func (root *FileInfo) LookUp(path string) *FileInfo {
