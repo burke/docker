@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/docker/docker/pkg/system"
@@ -51,6 +52,7 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 	ch := make(chan error, conc)
 	for i := 0; i < conc; i++ {
 		go func() { ch <- w.walkQueue() }()
+		time.Sleep(3 * time.Millisecond)
 	}
 
 	for i := 0; i < conc; i++ {
