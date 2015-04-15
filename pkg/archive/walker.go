@@ -54,10 +54,8 @@ func (w *walker) filepathWalk() error {
 }
 
 func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
-	if path != "/" {
-		if err := w.myfun(path, i1, i2); err != nil {
-			return err
-		}
+	if err := w.myfun(path, i1, i2); err != nil {
+		return err
 	}
 
 	// If these files (and therefore the subtrees rooted here) are the same
