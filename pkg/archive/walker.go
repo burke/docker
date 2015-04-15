@@ -224,10 +224,9 @@ func readdirnames(f *os.File) (names []nameIno, err error) {
 		}
 
 		// Drain the buffer
-		var nb, nc int
-		nb, nc, names = ParseDirent(buf[bufp:nbuf], n, names)
+		var nb int
+		nb, _, names = ParseDirent(buf[bufp:nbuf], -1, names)
 		bufp += nb
-		n -= nc
 	}
 	if n >= 0 && len(names) == 0 {
 		return names, io.EOF
