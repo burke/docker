@@ -18,6 +18,7 @@ type walker struct {
 	dir2  string
 	root1 *FileInfo
 	root2 *FileInfo
+	q     chan workItem
 }
 
 // collectFileInfoForChanges returns a complete representation of the trees
@@ -32,6 +33,7 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		dir2:  dir2,
 		root1: newRootFileInfo(),
 		root2: newRootFileInfo(),
+		q:     make(chan workItem, 1024),
 	}
 
 	i1, err := os.Lstat(w.dir1)
@@ -43,7 +45,8 @@ func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) 
 		return nil, nil, err
 	}
 
-	if err := w.walk("/", i1, i2); err != nil {
+	w.q <- workItem{"/", i1, i2}
+	if err := w.walkQueue(); err != nil {
 		return nil, nil, err
 	}
 	return w.root1, w.root2, nil
@@ -73,7 +76,26 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 	return nil
 }
 
-func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
+type workItem struct {
+	path string
+	i1   os.FileInfo
+	i2   os.FileInfo
+}
+
+func (w *walker) walkQueue() (err error) {
+	for {
+		select {
+		case item := <-w.q:
+			if err := w.work(item.path, item.i1, item.i2); err != nil {
+				return err
+			}
+		default:
+			return nil
+		}
+	}
+}
+
+func (w *walker) work(path string, i1, i2 os.FileInfo) (err error) {
 	if path != "/" {
 		if err := walkchunk(path, i1, w.dir1, w.root1); err != nil {
 			return err
@@ -159,9 +181,7 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) (err error) {
 		if err2 != nil && !os.IsNotExist(err2) {
 			return err
 		}
-		if err = w.walk(fname, cInfo1, cInfo2); err != nil {
-			return err
-		}
+		w.q <- workItem{fname, cInfo1, cInfo2}
 	}
 	return nil
 }
