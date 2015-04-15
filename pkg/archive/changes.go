@@ -142,12 +142,12 @@ func Changes(layers []string, rw string) ([]Change, error) {
 }
 
 type FileInfo struct {
-	parent     *FileInfo
-	name       string
-	stat       *system.Stat_t
-	children   map[string]*FileInfo
-	capability []byte
-	added      bool
+	parent   *FileInfo
+	name     string
+	stat     *system.Stat_t
+	children map[string]*FileInfo
+	added    bool
+	_path    string
 }
 
 func (root *FileInfo) LookUp(path string) *FileInfo {
@@ -169,11 +169,21 @@ func (root *FileInfo) LookUp(path string) *FileInfo {
 	return parent
 }
 
+func (info *FileInfo) capability() []byte {
+	r, _ := system.Lgetxattr(info.path(), "security.capability")
+	return r
+}
+
 func (info *FileInfo) path() string {
+	if info._path != "" {
+		return info._path
+	}
 	if info.parent == nil {
 		return "/"
 	}
-	return filepath.Join(info.parent.path(), info.name)
+	path := filepath.Join(info.parent.path(), info.name)
+	info._path = path
+	return path
 }
 
 func (info *FileInfo) isDir() bool {
@@ -223,7 +233,7 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 				// Don't look at size for dirs, its not a good measure of change
 				(oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR &&
 					(!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) || (oldStat.Size() != newStat.Size()))) ||
-				bytes.Compare(oldChild.capability, newChild.capability) != 0 {
+				bytes.Compare(oldChild.capability(), newChild.capability()) != 0 {
 				change := Change{
 					Path: newChild.path(),
 					Kind: ChangeModify,
