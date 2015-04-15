@@ -84,6 +84,7 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 	}
 	info.stat = stat
 	info.capability, _ = system.Lgetxattr(cpath, "security.capability") //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	parent.AddChild(info)
 	parent.children[info.name] = info
 	return nil
 }
