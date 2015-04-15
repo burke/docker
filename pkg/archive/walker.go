@@ -20,7 +20,6 @@ type walker struct {
 	dir2  string
 	root1 *FileInfo
 	root2 *FileInfo
-	fn    WalkFunc
 }
 
 // collectFileInfoForChanges returns a complete representation of the trees
@@ -30,14 +29,12 @@ type walker struct {
 // to generating a list of changes between the two directories, as it does not
 // reflect the full contents.
 func collectFileInfoForChanges(dir1, dir2 string) (*FileInfo, *FileInfo, error) {
-
 	w := &walker{
 		dir1:  dir1,
 		dir2:  dir2,
 		root1: newRootFileInfo(),
 		root2: newRootFileInfo(),
 	}
-	w.fn = w.myfun
 
 	if err := w.filepathWalk(); err != nil {
 		return nil, nil, err
@@ -49,11 +46,11 @@ func (w *walker) filepathWalk() error {
 
 	i1, err := os.Lstat(w.dir1)
 	if err != nil {
-		return w.fn("/", nil, nil, err)
+		return w.myfun("/", nil, nil, err)
 	}
 	i2, err := os.Lstat(w.dir2)
 	if err != nil {
-		return w.fn("/", nil, nil, err)
+		return w.myfun("/", nil, nil, err)
 	}
 
 	return w.walk("/", i1, i2)
@@ -111,7 +108,7 @@ func (w *walker) myfun(path string, f1, f2 os.FileInfo, err error) error {
 	return nil
 }
 func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
-	err := w.fn(path, i1, i2, nil)
+	err := w.myfun(path, i1, i2, nil)
 	if err != nil {
 		return err
 	}
@@ -134,14 +131,14 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 	if is1Dir {
 		names1, err = readDirNames(filepath.Join(w.dir1, path))
 		if err != nil {
-			return w.fn(path, i1, i2, err)
+			return w.myfun(path, i1, i2, err)
 		}
 	}
 
 	if is2Dir {
 		names2, err = readDirNames(filepath.Join(w.dir2, path))
 		if err != nil {
-			return w.fn(path, i1, i2, err)
+			return w.myfun(path, i1, i2, err)
 		}
 	}
 
@@ -193,11 +190,11 @@ func (w *walker) walk(path string, i1, i2 os.FileInfo) error {
 		oldInfo, err1 := os.Lstat(fp1)
 		newInfo, err2 := os.Lstat(fp2)
 		if err1 != nil && !os.IsNotExist(err1) {
-			if err := w.fn(fname, oldInfo, newInfo, err1); err != nil {
+			if err := w.myfun(fname, oldInfo, newInfo, err1); err != nil {
 				return err
 			}
 		} else if err2 != nil && !os.IsNotExist(err2) {
-			if err := w.fn(fname, oldInfo, newInfo, err2); err != nil {
+			if err := w.myfun(fname, oldInfo, newInfo, err2); err != nil {
 				return err
 			}
 		} else {
