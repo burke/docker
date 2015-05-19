@@ -887,9 +887,19 @@ Journald logging driver for Docker. Writes log messages to journald; the contain
 Fluentd logging driver for Docker. Writes log messages to fluentd (forward input). `docker logs`
 command is not available for this logging driver
 
-#### Log Opts : 
+Some options are supported by specifying `--log-opt` as many as needed, like `--log-opt host=localhost --log-opt port=24224`.
 
-Logging options for configuring a log driver. The following log options are supported: [none]
+ - `host`: host name or IP address of Fluentd server [localhost]
+ - `port`: forward input port number of Fluentd server [24224]
+ - `tag`: Fluentd message tag of logs forwarded [docker.CONTAINER\_ID]
+ - `tag-type`: how to format tags, id/fullid/name [id]
+ - `tag-prefix`: tag prefix to format tags [docker]
+
+If `tag` is specified, it will overwrite other `tag-*` options.
+
+#### Log Opts (--log-opt)
+
+Logging options for configuring a log driver. Show each logging driver what options are supported.
 
 ## Overriding Dockerfile image defaults
 
