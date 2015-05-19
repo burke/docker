@@ -1,10 +1,12 @@
 package fluentd
 
 import (
+	"io"
+	"strconv"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/daemon/logger"
 	"github.com/fluent/fluent-logger-golang/fluent"
-	"strconv"
 )
 
 type Fluentd struct {
@@ -14,7 +16,16 @@ type Fluentd struct {
 	writer        *fluent.Fluent
 }
 
-func New(config map[string]string, id string, name string) (logger.Logger, error) {
+const name = "fluentd"
+
+func init() {
+	if err := logger.RegisterLogDriver(name, New); err != nil {
+		logrus.Fatal(err)
+	}
+}
+
+func New(ctx logger.Context) (logger.Logger, error) {
+	config := ctx.Config
 	port := 24224
 	host := "localhost"
 	if config["port"] != "" {
@@ -30,15 +41,15 @@ func New(config map[string]string, id string, name string) (logger.Logger, error
 			tagPrefix = config["tag-prefix"] + "."
 		}
 		if config["tag-type"] == "name" {
-			tag = tagPrefix + name
+			tag = tagPrefix + ctx.ContainerName
 		} else if config["tag-type"] == "fullid" {
-			tag = tagPrefix + id
+			tag = tagPrefix + ctx.ContainerID
 		} else { // id
-			tag = tagPrefix + id[:12]
+			tag = tagPrefix + ctx.ContainerID[:12]
 		}
 	}
 	log, err := fluent.New(fluent.Config{FluentPort: port, FluentHost: host})
-	logrus.Debugf("logging driver fluentd configured for container:%s.", id)
+	logrus.Debugf("logging driver fluentd configured for container:%s.", ctx.ContainerID)
 	logrus.Debugf("logging driver fluentd port:%d.", port)
 	logrus.Debugf("logging driver fluentd host:%s.", host)
 	logrus.Debugf("logging driver fluentd tag:%s.", tag)
@@ -47,8 +58,8 @@ func New(config map[string]string, id string, name string) (logger.Logger, error
 	}
 	return &Fluentd{
 		tag:           tag,
-		containerid:   id,
-		containername: name,
+		containerid:   ctx.ContainerID,
+		containername: ctx.ContainerName,
 		writer:        log,
 	}, nil
 }
@@ -71,5 +82,9 @@ func (f *Fluentd) Close() error {
 }
 
 func (f *Fluentd) Name() string {
-	return "Fluentd"
+	return name
+}
+
+func (s *Fluentd) GetReader() (io.Reader, error) {
+	return nil, logger.ReadLogsNotSupported
 }
