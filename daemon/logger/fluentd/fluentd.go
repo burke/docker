@@ -11,12 +11,16 @@ import (
 
 type Fluentd struct {
 	tag           string
-	containerid   string
-	containername string
+	containerID   string
+	containerName string
 	writer        *fluent.Fluent
 }
 
 const name = "fluentd"
+
+const defaultHostName = "localhost"
+const defaultPort = 24224
+const defaultTagPrefix = "docker"
 
 func init() {
 	if err := logger.RegisterLogDriver(name, New); err != nil {
@@ -26,26 +30,31 @@ func init() {
 
 func New(ctx logger.Context) (logger.Logger, error) {
 	config := ctx.Config
-	port := 24224
-	host := "localhost"
+	port := defaultPort
+	host := defaultHostName
 	if config["port"] != "" {
-		port, _ = strconv.Atoi(config["port"])
+		portp, errp := strconv.Atoi(config["port"])
+		if errp != nil {
+			return nil, errp
+		}
+		port = portp
 	}
 	if config["host"] != "" {
 		host = config["host"]
 	}
 	tag := config["tag"]
 	if tag == "" {
-		tagPrefix := "docker."
+		tagPrefix := defaultTagPrefix
 		if config["tag-prefix"] != "" {
-			tagPrefix = config["tag-prefix"] + "."
+			tagPrefix = config["tag-prefix"]
 		}
-		if config["tag-type"] == "name" {
-			tag = tagPrefix + ctx.ContainerName
-		} else if config["tag-type"] == "fullid" {
-			tag = tagPrefix + ctx.ContainerID
-		} else { // id
-			tag = tagPrefix + ctx.ContainerID[:12]
+		switch config["tag-type"] {
+		case "name":
+			tag = tagPrefix + "." + ctx.ContainerName
+		case "fullid":
+			tag = tagPrefix + "." + ctx.ContainerID
+		default:
+			tag = tagPrefix + "." + ctx.ContainerID[:12]
 		}
 	}
 	log, err := fluent.New(fluent.Config{FluentPort: port, FluentHost: host})
@@ -58,16 +67,16 @@ func New(ctx logger.Context) (logger.Logger, error) {
 	}
 	return &Fluentd{
 		tag:           tag,
-		containerid:   ctx.ContainerID,
-		containername: ctx.ContainerName,
+		containerID:   ctx.ContainerID,
+		containerName: ctx.ContainerName,
 		writer:        log,
 	}, nil
 }
 
 func (f *Fluentd) Log(msg *logger.Message) error {
-	var data = map[string]string{
-		"container_id":   f.containerid,
-		"container_name": f.containername,
+	data := map[string]string{
+		"container_id":   f.containerID,
+		"container_name": f.containerName,
 		"source":         msg.Source,
 		"log":            string(msg.Line),
 	}
