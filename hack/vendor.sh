@@ -45,16 +45,13 @@ clone() {
 # the following lines are in sorted order, FYI
 clone git github.com/Sirupsen/logrus v0.7.3 # logrus is a common dependency among multiple deps
 clone git github.com/docker/libtrust 230dfd18c232
-clone git github.com/fluent/fluent-logger-golang v0.6.0
 clone git github.com/go-check/check 64131543e7896d5bcc6bd5a76287eb75ea96c673
 clone git github.com/go-fsnotify/fsnotify v1.2.0
 clone git github.com/gorilla/context 14f550f51a
 clone git github.com/gorilla/mux e444e69cbd
 clone git github.com/kr/pty 5cf931ef8f
 clone git github.com/mistifyio/go-zfs v2.1.0
-clone git github.com/philhofer/fwd 899e4efba8eaa1fea74175308f3fae18ff3319fa
 clone git github.com/tchap/go-patricia v2.1.0
-clone git github.com/tinylib/msgp 75ee40d2601edf122ef667e2a07d600d4c44490c
 clone hg code.google.com/p/go.net 84a4013f96e0
 clone hg code.google.com/p/gosqlite 74691fb6f837
 
@@ -73,3 +70,8 @@ clone git github.com/docker/libcontainer a37b2a4f152e2a1c9de596f54c051cb889de069
 clone git github.com/coreos/go-systemd v2
 clone git github.com/godbus/dbus v2
 clone git github.com/syndtr/gocapability 66ef2aa7a23ba682594e2b6f74cf40c0692b49fb
+
+clone git github.com/fluent/fluent-logger-golang v0.6.0
+# fluent-logger-golang deps
+clone git github.com/philhofer/fwd 899e4efba8eaa1fea74175308f3fae18ff3319fa
+clone git github.com/tinylib/msgp 75ee40d2601edf122ef667e2a07d600d4c44490c
